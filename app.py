@@ -3,7 +3,7 @@ os.system("pip install opencv-python")
 os.system("pip install numpy")
 os.system("pip install requests")
 os.system("pip install gtts")
-os.system("pip install searxng")
+os.system("pip install bs4")
 os.system("pip install pillow")
 
 # Imports
@@ -11,15 +11,16 @@ import cv2
 import numpy as np
 import requests
 from gtts import gTTS
+from bs4 import BeautifulSoup
 import tkinter as tk
 from tkinter import Label, Button, Text
 from PIL import Image, ImageTk
-import searxng
 
 # Setup
 OBJECT_DETECTION_MODEL = "yolov3.weights"
 OBJECT_DETECTION_CONFIG = "yolov3.cfg"
 UNALLOWED_FILE = "unallowed.txt"
+SEARXNG_URL = "https://searx.bndkt.io"  # Replace with your SearXNG instance URL
 
 def load_object_detection_model():
     net = cv2.dnn.readNet(OBJECT_DETECTION_MODEL, OBJECT_DETECTION_CONFIG)
@@ -65,9 +66,18 @@ def write_unallowed_site(site):
 
 def perform_web_lookup(object_name):
     unallowed_sites = read_unallowed_sites()
-    search_results = searxng.search(object_name, max_results=5)  # Adjust the max_results as needed
-    filtered_results = [result for result in search_results if result['href'] not in unallowed_sites]
-    return filtered_results
+    search_results = []
+    query = object_name.replace(' ', '+')
+    search_url = f"{SEARXNG_URL}/search?q={query}&categories=general&format=json"
+    
+    response = requests.get(search_url)
+    results = response.json()["results"]
+    
+    for result in results:
+        if result["url"] not in unallowed_sites:
+            search_results.append(result)
+    
+    return search_results
 
 def text_to_speech(text, lang='en'):
     tts = gTTS(text=text, lang=lang)
@@ -86,10 +96,10 @@ def analyze_image():
         object_name = "detected_object_name"  # Replace with actual detected object name
         search_results = perform_web_lookup(object_name)
         if search_results:
-            snippet = search_results[0].get('body', 'No relevant information found.')
+            snippet = search_results[0].get('content', 'No relevant information found.')
             text_to_speech(snippet)
             result_text.insert(tk.END, snippet + "\n")
-            result_text.insert(tk.END, "Source: " + search_results[0]['href'] + "\n")
+            result_text.insert(tk.END, "Source: " + search_results[0]['url'] + "\n")
         else:
             text_to_speech("No relevant information found.")
             result_text.insert(tk.END, "No relevant information found.\n")
@@ -100,7 +110,6 @@ def analyze_image():
 def flag_incorrect_info():
     incorrect_info = result_text.get("1.0", tk.END).strip().split("\n")[-1]
     write_unallowed_site(incorrect_info)
-    result_text.delete("1.0", tk.END)
     result_text.insert(tk.END, "Information flagged as incorrect and will be avoided in future searches.\n")
 
 if __name__ == "__main__":
