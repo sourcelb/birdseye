@@ -3,7 +3,7 @@ os.system("pip install opencv-python")
 os.system("pip install numpy")
 os.system("pip install requests")
 os.system("pip install gtts")
-os.system("pip install ddg")
+os.system("pip install searxng")
 os.system("pip install pillow")
 
 # Imports
@@ -11,10 +11,10 @@ import cv2
 import numpy as np
 import requests
 from gtts import gTTS
-from ddg import ddg
 import tkinter as tk
 from tkinter import Label, Button, Text
 from PIL import Image, ImageTk
+import searxng
 
 # Setup
 OBJECT_DETECTION_MODEL = "yolov3.weights"
@@ -65,7 +65,7 @@ def write_unallowed_site(site):
 
 def perform_web_lookup(object_name):
     unallowed_sites = read_unallowed_sites()
-    search_results = ddg(object_name, max_results=5)  # Adjust the max_results as needed
+    search_results = searxng.search(object_name, max_results=5)  # Adjust the max_results as needed
     filtered_results = [result for result in search_results if result['href'] not in unallowed_sites]
     return filtered_results
 
@@ -100,6 +100,7 @@ def analyze_image():
 def flag_incorrect_info():
     incorrect_info = result_text.get("1.0", tk.END).strip().split("\n")[-1]
     write_unallowed_site(incorrect_info)
+    result_text.delete("1.0", tk.END)
     result_text.insert(tk.END, "Information flagged as incorrect and will be avoided in future searches.\n")
 
 if __name__ == "__main__":
